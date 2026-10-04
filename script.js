@@ -145,7 +145,9 @@ function printHelp(){
  out("Packages:    pkg update  |  pkg upgrade  |  pkg install <name>  |  pkg remove <name>");
  out("            pkg search <word>  |  pkg list-installed  |  pkg info <name>");
  out("Runtime:     python  |  node  |  sh  |  calc  |  clear  |  history");
- out("Network:     ping  |  curl  |  wget  |  scan");
+ out("Python uses a real WebAssembly runtime inside the browser sandbox.");
+ out("Network:     ping  |  curl  |  wget  |  fetch  |  scan");
+ out("Real device: mic  |  camera  |  notify  |  vibrate  |  clipboard  |  download  |  share  |  fullscreen");
  out("System:      uname  |  whoami  |  date  |  env  |  export  |  neofetch  |  status");
  out("Tools:       nano  |  figlet  |  git  |  mkapp  |  apps  |  matrix");
  out("Tip: commands are stateful and survive refresh. Type 'about' for limits.");
@@ -162,7 +164,7 @@ function pkgInstall(names){
   const meta=packageCatalog[name];
   if(!meta){out(`E: Unable to locate package ${name}`);return}
   if(installed[name]){out(`${name} ${installed[name]} is already installed.`);return}
-  out(`Resolving ${name}...`);out(`Downloading ${name}_${meta.v} (${meta.size})... 100%`);out(`Unpacking ${name}...`);installed[name]=meta.v;out(`Setting up ${name} (${meta.v})... Done`,"ok");
+  out(`Resolving ${name}...`);out(`Downloading ${name}_${meta.v} (${meta.size})... 100%`);out(`Unpacking ${name}...`);installed[name]=meta.v;out(`Setting up ${name} (${meta.v})... Done`,"ok"); if(name==="python") out("Python runtime package registered. Run python to initialize the runtime.");
  });saveState();
 }
 function pkgUpgrade(){
@@ -193,15 +195,58 @@ function remove(args){if(!args.length){out("rm: missing operand");return}for(con
 function copyMove(args,move){if(args.length<2){out(`${move?"mv":"cp"}: missing destination file operand`);return}const src=pathNorm(args[0]),dst=pathNorm(args[1]);if(!vfs[src]){out(`${move?"mv":"cp"}: ${args[0]}: No such file or directory`);return}if(vfs[src].type==="dir"){out(`${move?"mv":"cp"}: directory operation is limited in this browser shell`);return}const dest=vfs[dst]?.type==="dir"?dst+"/"+basename(src):dst;if(!ensureParent(dest)){out(`cannot write '${args[1]}': No such directory`);return}vfs[dest]={type:"file",content:vfs[src].content};if(move)delete vfs[src];saveVFS();out(`${move?"moved":"copied"} ${src} -> ${dest}`);}
 function echoCmd(args){const text=args.join(" ");const m=text.match(/^(.*)\s*(>>|>)\s*([^>]+)$/);if(!m){out(text);return}const content=m[1].trim(),op=m[2],p=pathNorm(m[3].trim());if(!ensureParent(p)){out(`echo: ${m[3].trim()}: No such directory`);return}if(!vfs[p])vfs[p]={type:"file",content:""};if(vfs[p].type!=="file"){out("echo: target is a directory");return}vfs[p].content=op===">>"?(vfs[p].content? vfs[p].content+"\n":"")+content:content;saveVFS();}
 function simpleCalc(expr){if(!/^[0-9+\-*/%().\s]+$/.test(expr))return null;try{return Function(`"use strict";return (${expr})`)()}catch{return null}}
-function runPython(args){
+let nexusPyodide=null, nexusPyodideLoading=null;
+async function loadPythonRuntime(){
+  if(nexusPyodide)return nexusPyodide;
+  if(nexusPyodideLoading)return nexusPyodideLoading;
+  out("Python runtime: loading WebAssembly engine from the package runtime...");
+  nexusPyodideLoading=(async()=>{
+    const mod=await import("https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.mjs");
+    nexusPyodide=await mod.loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.26.2/full/"});
+    out("Python runtime ready.","ok");
+    return nexusPyodide;
+  })().catch(e=>{nexusPyodideLoading=null;out(`Python runtime failed to load: ${e.message}`);throw e});
+  return nexusPyodideLoading;
+}
+async function runPython(args){
  if(!installed.python){out("python: command not found\nInstall it with: pkg install python");return}
- const code=args.join(" ").replace(/^(-c\s+)?[\"']|[\"']$/g,"").trim();
- if(!code){out("NEXUS Python console\nType: python -c \"print('hello')\"");return}
- const pm=code.match(/^print\((.*)\)$/s);if(pm){let x=pm[1].trim();try{if(/^['\"`].*['\"`]$/.test(x))out(x.slice(1,-1));else if(simpleCalc(x)!==null)out(String(simpleCalc(x)));else out(x)}catch{out("Python runtime error")};return}
- out("Python subset: print(...), arithmetic expressions. Native modules are unavailable.");
+ const code=args.join(" ").replace(/^(-c\s+)?["']|["']$/g,"").trim();
+ const py=await loadPythonRuntime();
+ if(!code){out("Python 3 runtime ready. Use: python -c \"print(2+2)\" or type a one-line expression.");return}
+ try{
+   const result=await py.runPythonAsync(code);
+   if(result!==undefined&&result!==null)out(String(result));
+ }catch(e){out(`Python error: ${e.message||e}`)}
 }
 function runNode(args){const code=args.join(" ").replace(/^-e\s+/,"").replace(/^['\"]|['\"]$/g,"");if(!code){out("NEXUS Node console\nType: node -e \"console.log('hello')\"");return}const m=code.match(/console\.log\((.*)\)/);if(m){let x=m[1].trim();if(/^['\"`].*['\"`]$/.test(x))out(x.slice(1,-1));else if(simpleCalc(x)!==null)out(String(simpleCalc(x)));else out(x);return}out("Node subset: console.log(...) and arithmetic expressions.");}
 function shCommand(args){const code=args.join(" ").replace(/^-c\s+/,"").replace(/^['\"]|['\"]$/g,"");if(!code){out("NEXUS shell: use sh -c \"command\"");return}code.split(/\s*&&\s*|\s*;\s*/).filter(Boolean).forEach(runCommand);}
+async function realMic(){
+  if(!navigator.mediaDevices?.getUserMedia){out("mic: microphone API unavailable in this browser");return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const audio=new AudioContext(); const src=audio.createMediaStreamSource(stream); const analyser=audio.createAnalyser(); analyser.fftSize=256; src.connect(analyser);
+    const data=new Uint8Array(analyser.frequencyBinCount); let active=true; out("Microphone access granted. Live level monitor started. Type 'mic off' to stop.","ok");
+    window.__nexusMic={stream,audio,analyser,data,active};
+    const tick=()=>{if(!window.__nexusMic?.active)return; analyser.getByteTimeDomainData(data); let sum=0; for(const v of data){const x=(v-128)/128;sum+=x*x} const level=Math.sqrt(sum/data.length)*100; out(`MIC LEVEL ${level.toFixed(1)}%`); window.__nexusMic.timer=setTimeout(tick,1000)}; tick();
+  }catch(e){out(`mic: permission/device error — ${e.message}`)}
+}
+function stopMic(){const m=window.__nexusMic;if(!m){out("mic: not active");return}m.active=false;clearTimeout(m.timer);m.stream.getTracks().forEach(t=>t.stop());m.audio.close();window.__nexusMic=null;out("Microphone stopped.","ok")}
+async function realCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){out("camera: camera API unavailable in this browser");return}
+  try{const stream=await navigator.mediaDevices.getUserMedia({video:true}); const w=window.open("","_blank","width=720,height=540"); if(!w){stream.getTracks().forEach(t=>t.stop());out("camera: popup blocked. Allow popups and try again.");return} w.document.write(`<title>NEXUS Camera</title><body style="margin:0;background:#050811;display:grid;place-items:center;height:100vh"><video autoplay playsinline style="max-width:100%;max-height:100%;border-radius:14px"></video><script>const v=document.querySelector('video');window.addEventListener('beforeunload',()=>v.srcObject?.getTracks().forEach(t=>t.stop()));</script></body>`);w.document.close();w.document.querySelector("video").srcObject=stream;out("Camera opened with live video.","ok")}catch(e){out(`camera: permission/device error — ${e.message}`)}
+}
+async function realNotify(args){
+  if(!("Notification" in window)){out("notify: browser notifications unavailable");return}
+  let p=Notification.permission;if(p!=="granted")p=await Notification.requestPermission(); if(p!=="granted"){out("notify: permission denied");return}
+  const msg=args.join(" ")||"NEXUS notification"; new Notification("NEXUS",{body:msg});out("Notification sent.","ok")
+}
+async function realClipboard(args){const text=args.join(" ");if(!text){out("clipboard: usage clipboard <text>");return}try{await navigator.clipboard.writeText(text);out("Copied to the real system clipboard.","ok")}catch(e){out(`clipboard: ${e.message}`)}}
+function realVibrate(args){if(!navigator.vibrate){out("vibrate: vibration API unavailable");return}const ms=Math.max(1,Math.min(10000,Number(args[0])||200));navigator.vibrate(ms);out(`Device vibration requested for ${ms} ms.`,"ok")}
+async function realFullscreen(){try{await document.documentElement.requestFullscreen();out("NEXUS entered fullscreen mode.","ok")}catch(e){out(`fullscreen: ${e.message}`)}}
+function realDownload(args){if(!args.length){out("download: usage download <filename> [content]");return}const name=args.shift(),content=args.join(" ")||"Created by NEXUS\n"+new Date().toString();const blob=new Blob([content],{type:"text/plain"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);out(`Downloaded ${name} to the device.`,"ok")}
+async function realFetch(args){const url=args[0];if(!url){out("fetch: usage fetch <https-url>");return}try{const r=await fetch(url,{method:"GET",mode:"cors"});const text=await r.text();out(`HTTP ${r.status} ${r.statusText}\n${text.slice(0,4000)}`)}catch(e){out(`fetch: request failed (CORS/network policy may block it) — ${e.message}`)}}
+function realShare(args){if(!navigator.share){out("share: Web Share API unavailable");return}navigator.share({title:"NEXUS",text:args.join(" ")||"Shared from NEXUS"}).then(()=>out("Share sheet opened.","ok")).catch(e=>out(`share: ${e.message}`))}
+function browserInfo(){out(`REAL WEB CAPABILITIES\nMicrophone  ${navigator.mediaDevices?.getUserMedia?"available":"unavailable"}\nCamera      ${navigator.mediaDevices?.getUserMedia?"available":"unavailable"}\nClipboard   ${navigator.clipboard?"available":"unavailable"}\nNotify      ${"Notification" in window?Notification.permission:"unavailable"}\nVibration   ${navigator.vibrate?"available":"unavailable"}\nFullscreen  ${document.fullscreenEnabled?"available":"unavailable"}\nShare       ${navigator.share?"available":"unavailable"}`)}
 function mkapp(args){const type=(args.shift()||"blank").toLowerCase(),title=args.join(" ")||"NEXUS App";const safe=title.replace(/[^a-z0-9_-]+/gi,"-").toLowerCase();const templates={calculator:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}input,button{padding:12px;margin:4px}</style><h1>${esc(title)}</h1><input id=a placeholder="25*4"><button onclick="o.textContent=Function('return '+a.value)()">Calculate</button><pre id=o></pre>`,todo:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}</style><h1>${esc(title)}</h1><input id=i><button onclick="if(i.value){l.innerHTML+='<li>'+i.value+'</li>';i.value=''}">Add</button><ul id=l></ul>`,notes:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}textarea{width:100%;height:60vh}</style><h1>${esc(title)}</h1><textarea placeholder="Write..."></textarea>`,stopwatch:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}button{padding:12px}</style><h1>${esc(title)}</h1><h2 id=t>0.0</h2><button onclick="s??">Start</button><script>let x=0,r;function s(){clearInterval(r);r=setInterval(()=>t.textContent=(x+=.1).toFixed(1),100)}</script>`,quiz:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}button{padding:12px}</style><h1>${esc(title)}</h1><p>What is 2 + 2?</p><button onclick="o.textContent='Correct'">4</button><button onclick="o.textContent='Try again'">5</button><h2 id=o></h2>`,blank:`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head><body><h1>${esc(title)}</h1><p>Generated by NEXUS.</p></body></html>`};let html=templates[type]||templates.blank;const blob=new Blob([html],{type:"text/html"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=safe+".html";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);out(`Generated ${safe}.html and started download.` ,"ok");}
 function apps(){out("NEXUS APP GENERATOR\nmkapp calculator <title>\nmkapp todo <title>\nmkapp notes <title>\nmkapp stopwatch <title>\nmkapp quiz <title>\nmkapp blank <title>");}
 function neofetch(){out(`NEXUS\n------------------------------\nOS        NEXUS Browser OS\nKernel    virtual-6.x\nShell     nexus-sh\nUser      guest\nHome      /home/guest\nPackages  ${Object.keys(installed).length}\nStorage   local browser storage\nNetwork   browser sandbox`);}
@@ -216,6 +261,7 @@ function runCommand(line){
  if(chain.length>1){chain.forEach(runCommand);return}
  const parts=raw.match(/(?:[^\s\"']+|\"[^\"]*\"|'[^']*')+/g)||[];const cmd=(parts.shift()||"").replace(/^['\"]|['\"]$/g,"").toLowerCase();const args=parts.map(x=>x.replace(/^['\"]|['\"]$/g,""));
  if(cmd==="help"||cmd==="?"){printHelp();return} if(cmd==="clear"){terminal.innerHTML="";return} if(cmd==="pwd"){out(cwd);return} if(cmd==="ls"||cmd==="dir"){ls(args);return} if(cmd==="cd"){const p=pathNorm(args[0]||"~");if(!vfs[p])out(`cd: ${args[0]||"~"}: No such file or directory`);else if(vfs[p].type!=="dir")out(`cd: ${args[0]}: Not a directory`);else{cwd=p;refreshPrompt()}return} if(cmd==="mkdir"){mkdir(args);return} if(cmd==="touch"){touch(args);return} if(cmd==="cat"){cat(args);return} if(cmd==="rm"||cmd==="rmdir"){remove(args);return} if(cmd==="cp"){copyMove(args,false);return} if(cmd==="mv"){copyMove(args,true);return} if(cmd==="tree"){tree(pathNorm(args[0]||cwd));return} if(cmd==="echo"){echoCmd(args);return}
+ if(cmd==="mic"){if((args[0]||"").toLowerCase()==="off")stopMic();else realMic();return} if(cmd==="camera"){realCamera();return} if(cmd==="notify"){realNotify(args);return} if(cmd==="clipboard"||cmd==="copy"){realClipboard(args);return} if(cmd==="vibrate"){realVibrate(args);return} if(cmd==="fullscreen"){realFullscreen();return} if(cmd==="download"){realDownload(args);return} if(cmd==="fetch"){realFetch(args);return} if(cmd==="share"){realShare(args);return} if(cmd==="webinfo"){browserInfo();return}
  if(cmd==="pkg"||cmd==="apt"||cmd==="apt-get"){pkgCommand(args);return}
  if(cmd==="python"||cmd==="python3"){runPython(args);return} if(cmd==="node"||cmd==="nodejs"){if(!installed.nodejs){out("node: command not found\nInstall it with: pkg install nodejs");return}runNode(args);return} if(cmd==="sh"||cmd==="bash"){shCommand(args);return}
  if(cmd==="calc"){const r=simpleCalc(args.join(" "));out(r===null?"calc: invalid expression":String(r));return}
@@ -228,13 +274,13 @@ function runCommand(line){
  out(`${cmd}: command not found. Type 'help' for commands.`);
 }
 function bootTerminal(){
- out("NEXUS CONSOLE v2.0");out("Original Unix-style browser environment");out("Type 'help' to list commands.");out("Tip: pkg update && pkg install python");refreshPrompt();
+ out("NEXUS CONSOLE v3.0");out("Browser-native command environment");out("Commands that require browser permission will trigger the real device API.");out("Type 'help' to list commands.");out("Try: webinfo | mic | camera | notify Hello | clipboard Hello");refreshPrompt();
 }
 termInput.addEventListener("keydown",e=>{
  if(e.key==="Enter"){const line=termInput.value.trim();if(line){outHTML(cmdLine(...(line.match(/(?:[^\s\"']+|\"[^\"]*\"|'[^']*')+/g)||[line]).slice(0,1),[]));commandHistory.push(line);histIndex=commandHistory.length;runCommand(line);localStorage.setItem("nexus-history",JSON.stringify(commandHistory));}termInput.value="";refreshPrompt();}
  if(e.key==="ArrowUp"){e.preventDefault();histIndex=Math.max(0,histIndex-1);termInput.value=commandHistory[histIndex]||""}
  if(e.key==="ArrowDown"){e.preventDefault();histIndex=Math.min(commandHistory.length,histIndex+1);termInput.value=commandHistory[histIndex]||""}
- if(e.key==="Tab"){e.preventDefault();const partial=termInput.value.trim();const pool=["help","clear","ls","cd","pwd","mkdir","touch","cat","rm","cp","mv","tree","echo","pkg","python","node","sh","calc","whoami","date","uname","env","export","neofetch","status","ping","scan","curl","wget","history","matrix","mkapp","apps","nano","git","about","lab","game","theme","exit"];const hit=pool.find(x=>x.startsWith(partial));if(hit)termInput.value=hit+" ";}
+ if(e.key==="Tab"){e.preventDefault();const partial=termInput.value.trim();const pool=["help","clear","ls","cd","pwd","mkdir","touch","cat","rm","cp","mv","tree","echo","mic","camera","notify","vibrate","clipboard","download","share","fullscreen","webinfo","fetch","pkg","python","node","sh","calc","whoami","date","uname","env","export","neofetch","status","ping","scan","curl","wget","history","matrix","mkapp","apps","nano","git","about","lab","game","theme","exit"];const hit=pool.find(x=>x.startsWith(partial));if(hit)termInput.value=hit+" ";}
 });
 try{commandHistory=JSON.parse(localStorage.getItem("nexus-history")||"[]")}catch{commandHistory=[]}
 bootTerminal();

@@ -1,36 +1,50 @@
-# NEXUS — Ultimate Edition
+# NEXUS — Native Browser System
 
-NEXUS is an original browser-based interactive environment designed for GitHub Pages. It uses four files only: `index.html`, `style.css`, `script.js`, and `README.md`.
+NEXUS is an original browser desktop/console. It is designed around **real browser APIs**, not fake success messages.
 
-## Console
+## Real commands
 
-The built-in console uses Unix-style command names and a persistent virtual filesystem. Package state and files are stored in browser local storage.
+- `mic` — requests microphone permission and measures live input level
+- `mic off` — stops the microphone stream
+- `camera` — requests camera permission and opens a live preview
+- `notify Hello` — sends a real browser notification after permission
+- `vibrate 300` — requests device vibration where supported
+- `clipboard Hello` — writes to the real system clipboard
+- `download file.txt Hello` — creates a real downloadable file
+- `share Hello` — opens the device/browser share sheet where supported
+- `fullscreen` — requests browser fullscreen
+- `fetch https://...` — makes a real CORS-enabled web request when the target allows it
+- `webinfo` — reports which browser capabilities are available
 
-Examples:
+## NEXUS environment
+
+The filesystem and package database are persistent in browser storage. Commands such as `ls`, `cd`, `mkdir`, `touch`, `cat`, `cp`, `mv`, `rm`, `tree`, `echo`, and `history` actually modify/read that NEXUS environment.
+
+`pkg update`, `pkg install`, `pkg remove`, `pkg search`, `pkg info`, and `pkg upgrade` update the NEXUS package state.
+
+### Python
+
+After `pkg install python`, the `python` command loads a real Python WebAssembly runtime in the browser. Example:
 
 ```text
 pkg update
-pkg upgrade
-pkg install python nodejs git nano
-pkg list-installed
-mkdir projects
-cd projects
-echo Hello > hello.txt
-cat hello.txt
-python -c "print('Hello from NEXUS')"
-node -e "console.log(25*4)"
+pkg install python
+python -c "print(2+2)"
 ```
 
-Other commands include `ls`, `pwd`, `cd`, `mkdir`, `touch`, `cat`, `rm`, `cp`, `mv`, `tree`, `echo`, `calc`, `history`, `ping`, `scan`, `neofetch`, `status`, `mkapp`, `apps`, `matrix`, `theme`, `game`, and `lab`.
+This executes Python code inside the browser sandbox; it does **not** install native Android/Linux binaries.
 
-## Important technical limit
+## Important browser limitation
 
-This is an original browser implementation, not a copy of another terminal application. GitHub Pages cannot execute native Android/Linux binaries, install real system packages into the phone, or access the device filesystem from a normal web page. Therefore package operations and runtimes are implemented inside the NEXUS browser sandbox. The commands still have persistent state and useful behavior inside that environment.
+A GitHub Pages website cannot execute arbitrary Android/Linux commands or write to protected phone directories. NEXUS therefore uses genuine browser capabilities wherever the browser exposes them, and a persistent sandbox for its own filesystem/package environment. It never claims a virtual operation changed the Android system.
 
-## Arena
+## GitHub Pages
 
-NEXUS Arena is a real canvas survival game with movement, aiming, shooting, enemies, waves, HP, pickups, particles, score and mobile controls.
+Upload/replace all four project files together:
 
-## Deploy
+- `index.html`
+- `style.css`
+- `script.js`
+- `README.md`
 
-Upload/replace all four files together in the GitHub Pages repository. Do not upload the ZIP as a replacement for the four source files.
+Do not upload the ZIP as a replacement for the four files.
