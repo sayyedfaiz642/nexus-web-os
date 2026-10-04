@@ -1,103 +1,103 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#05070d">
-  <title>NEXUS — Interactive Web OS</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#050811">
+  <title>NEXUS // Interactive Web System</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="boot">
-    <div class="boot-box">
-      <div class="boot-logo">NEXUS</div>
-      <div id="bootText">INITIALIZING SYSTEM...</div>
-      <div class="boot-bar"><span id="bootBar"></span></div>
-    </div>
-  </div>
-
   <canvas id="stars"></canvas>
 
   <header class="topbar">
-    <div class="brand"><span class="brand-dot"></span>NEXUS</div>
+    <div class="brand"><span class="dot"></span>NEXUS <i>// SYSTEM</i></div>
     <div class="top-actions">
-      <button id="themeBtn" class="icon-btn" title="Toggle theme">◐</button>
-      <button class="icon-btn" data-open="terminal">⌘</button>
+      <span class="status"><span></span>ONLINE</span>
+      <button class="mini-btn" id="themeBtn">◐</button>
+      <button class="mini-btn" data-open="terminal">›_</button>
     </div>
   </header>
 
   <main class="hero">
-    <div class="eyebrow">INTERACTIVE WEB OS • ONLINE</div>
-    <h1>Welcome to <span>NEXUS</span></h1>
-    <p>A futuristic browser-based control room. Explore the lab, run the terminal, and test your reaction speed.</p>
+    <div class="eyebrow">WELCOME, EXPLORER</div>
+    <h1>A website that<br>behaves <span>like a<br>system.</span></h1>
+    <p>Open apps, run commands, change the environment and discover hidden interfaces built entirely for the browser.</p>
     <div class="hero-actions">
-      <button class="primary" data-open="terminal">Open Terminal</button>
-      <button class="secondary" data-open="lab">Signal Lab</button>
-      <button class="secondary" data-open="game">Reaction Game</button>
+      <button class="primary" data-open="game">PLAY NEXUS ARENA</button>
+      <button class="secondary" data-open="terminal">OPEN TERMINAL</button>
     </div>
   </main>
 
-  <section class="core-wrap">
-    <div class="core">
-      <div class="core-ring r1"></div>
-      <div class="core-ring r2"></div>
-      <div class="core-ring r3"></div>
-      <div class="core-center">N</div>
-    </div>
-    <div class="core-label">NEXUS CORE <span>●</span></div>
+  <section class="app-grid">
+    <button class="app-card" data-open="about"><b>◈</b><strong>SYSTEM</strong><small>About NEXUS</small></button>
+    <button class="app-card" data-open="terminal"><b>›_</b><strong>TERMINAL</strong><small>Browser shell</small></button>
+    <button class="app-card" data-open="lab"><b>∿</b><strong>SIGNAL LAB</strong><small>Control the core</small></button>
+    <button class="app-card featured" data-open="game"><b>⚡</b><strong>ARENA</strong><small>Real playable game</small></button>
   </section>
 
-  <div class="dock">
-    <button data-open="about"><b>⌁</b><span>About</span></button>
-    <button data-open="terminal"><b>›_</b><span>Terminal</span></button>
-    <button data-open="lab"><b>∿</b><span>Signal Lab</span></button>
-    <button data-open="game"><b>⚡</b><span>Game</span></button>
-  </div>
+  <section class="core-section">
+    <div class="core">
+      <div class="ring one"></div><div class="ring two"></div><div class="ring three"></div>
+      <div class="core-letter">N</div>
+    </div>
+    <div class="core-caption">NEXUS CORE <span>●</span></div>
+  </section>
+
+  <footer>© 2026 NEXUS // Built for the web. <span>Press T to open terminal.</span></footer>
 
   <div class="window hidden" id="aboutWindow">
-    <div class="window-head"><span>ABOUT</span><button data-close="aboutWindow">×</button></div>
+    <div class="window-head"><span>NEXUS // SYSTEM</span><button data-close="aboutWindow">×</button></div>
     <div class="window-body">
-      <h2>NEXUS Web OS</h2>
-      <p>A zero-dependency futuristic interface running entirely in your browser.</p>
-      <div class="cards">
-        <div><strong>100%</strong><small>Browser based</small></div>
-        <div><strong>0</strong><small>Server required</small></div>
-        <div><strong>∞</strong><small>Possibilities</small></div>
+      <h2>Interactive Web System</h2>
+      <p class="muted">NEXUS is a browser-only environment: apps, terminal tools, experiments and a playable game live inside the same interface.</p>
+      <div class="stat-grid">
+        <div><strong>4</strong><small>Core files</small></div>
+        <div><strong>0</strong><small>Server APIs</small></div>
+        <div><strong>∞</strong><small>Ideas</small></div>
       </div>
-      <p class="muted">Tip: press <kbd>T</kbd> to open Terminal.</p>
+      <p class="hint">Everything is designed to run on GitHub Pages.</p>
     </div>
   </div>
 
-  <div class="window wide hidden" id="terminalWindow">
-    <div class="window-head"><span>NEXUS TERMINAL</span><button data-close="terminalWindow">×</button></div>
+  <div class="window terminal-window hidden" id="terminalWindow">
+    <div class="window-head"><span>NEXUS // TERMINAL</span><button data-close="terminalWindow">×</button></div>
     <div class="terminal" id="terminalOutput"></div>
-    <div class="terminal-input-row">
-      <span class="prompt">guest@nexus:~$</span>
-      <input id="terminalInput" autocomplete="off" spellcheck="false" aria-label="Terminal input">
-    </div>
+    <div class="terminal-input"><span>guest@nexus:<em id="termPath">~</em>$</span><input id="terminalInput" autocomplete="off" spellcheck="false"></div>
   </div>
 
   <div class="window hidden" id="labWindow">
-    <div class="window-head"><span>SIGNAL LAB</span><button data-close="labWindow">×</button></div>
+    <div class="window-head"><span>NEXUS // SIGNAL LAB</span><button data-close="labWindow">×</button></div>
     <div class="window-body">
-      <p class="muted">Move the controls and watch the system react.</p>
+      <p class="muted">Tune the virtual core and watch the interface react.</p>
       <label>Signal intensity <output id="signalValue">55%</output></label>
       <input id="signalSlider" type="range" min="0" max="100" value="55">
       <label>Orbit speed <output id="speedValue">35%</output></label>
       <input id="speedSlider" type="range" min="0" max="100" value="35">
-      <div class="signal-readout">SIGNAL: <span id="signalText">55%</span> // SPEED: <span id="speedText">35%</span></div>
-      <button class="primary full" id="randomSignal">Generate Random Signal</button>
+      <div class="readout">SIGNAL <span id="signalText">55%</span> <i>//</i> SPEED <span id="speedText">35%</span></div>
+      <button class="primary full" id="randomSignal">GENERATE RANDOM SIGNAL</button>
     </div>
   </div>
 
-  <div class="window hidden" id="gameWindow">
-    <div class="window-head"><span>REACTION TEST</span><button data-close="gameWindow">×</button></div>
-    <div class="window-body">
-      <p class="muted">Press START, wait for the panel to turn green, then tap it as fast as possible.</p>
-      <div id="reactionBox" class="reaction-box">READY</div>
-      <div class="game-row">
-        <button class="primary" id="gameStart">Start</button>
-        <div id="reactionResult">— ms</div>
+  <div class="window game-window hidden" id="gameWindow">
+    <div class="window-head"><span>NEXUS // ARENA</span><button data-close="gameWindow">×</button></div>
+    <div class="game-wrap">
+      <div class="game-hud">
+        <span>SCORE <b id="gameScore">0</b></span>
+        <span>WAVE <b id="gameWave">1</b></span>
+        <span>HP <b id="gameHp">100</b></span>
+        <span>BEST <b id="gameBest">0</b></span>
+      </div>
+      <canvas id="gameCanvas" width="720" height="460"></canvas>
+      <div class="game-overlay" id="gameMenu">
+        <div class="game-logo">NEXUS<br><span>ARENA</span></div>
+        <p>Survive the waves. Move, aim and fire. Collect energy cores.</p>
+        <button class="primary" id="gamePlay">START GAME</button>
+        <small>Keyboard: WASD + mouse • Mobile: drag + FIRE</small>
+      </div>
+      <div class="touch-controls">
+        <div id="joy" class="joystick"><span></span></div>
+        <button id="fireBtn" class="fire">FIRE</button>
       </div>
     </div>
   </div>
