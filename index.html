@@ -4,95 +4,105 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#05070d">
-  <title>NEXUS // Interactive Web OS</title>
+  <title>NEXUS — Interactive Web OS</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="boot" class="boot">
-    <div class="boot-logo">NEXUS</div>
-    <div class="boot-line"><span id="bootText">INITIALIZING SYSTEM...</span><span class="cursor">_</span></div>
-    <div class="progress"><i id="progressBar"></i></div>
-    <div class="boot-hint">Interactive Web OS // v1.0</div>
+  <div id="boot">
+    <div class="boot-box">
+      <div class="boot-logo">NEXUS</div>
+      <div id="bootText">INITIALIZING SYSTEM...</div>
+      <div class="boot-bar"><span id="bootBar"></span></div>
+    </div>
   </div>
 
-  <canvas id="space"></canvas>
+  <canvas id="stars"></canvas>
 
-  <main id="app" class="hidden">
-    <header class="topbar">
-      <div class="brand"><span class="dot"></span>NEXUS<span class="muted">/WEB-OS</span></div>
-      <div class="status"><span id="clock"></span><span class="online">● ONLINE</span></div>
-    </header>
-
-    <section class="hero">
-      <div>
-        <p class="eyebrow">WELCOME, EXPLORER</p>
-        <h1>A website that<br><span>behaves like a system.</span></h1>
-        <p class="sub">Open apps, run commands, change the environment and discover hidden interactions. Built with plain HTML, CSS and JavaScript.</p>
-        <div class="actions">
-          <button class="primary" onclick="openWindow('about')">ENTER SYSTEM</button>
-          <button onclick="openWindow('terminal')">OPEN TERMINAL</button>
-        </div>
-      </div>
-      <div class="core">
-        <div class="core-ring r1"></div><div class="core-ring r2"></div><div class="core-ring r3"></div>
-        <div class="core-center">N</div>
-      </div>
-    </section>
-
-    <section class="dock" aria-label="Applications">
-      <button onclick="openWindow('about')"><b>◈</b><span>ABOUT</span></button>
-      <button onclick="openWindow('terminal')"><b>⌘</b><span>TERMINAL</span></button>
-      <button onclick="openWindow('lab')"><b>✦</b><span>LAB</span></button>
-      <button onclick="openWindow('game')"><b>◉</b><span>GAME</span></button>
-      <button onclick="toggleTheme()"><b>◐</b><span>THEME</span></button>
-    </section>
-
-    <div id="about" class="window">
-      <div class="window-head"><span>NEXUS // ABOUT</span><button onclick="closeWindow('about')">×</button></div>
-      <div class="window-body">
-        <h2>Not a normal landing page.</h2>
-        <p>This project turns a static GitHub Pages site into a tiny interactive operating system. Everything runs in the browser—no database, server or paid API required.</p>
-        <div class="cards">
-          <div><strong>100%</strong><small>Front-end</small></div>
-          <div><strong>0</strong><small>Dependencies</small></div>
-          <div><strong>∞</strong><small>Ideas to extend</small></div>
-        </div>
-        <p class="tip">Try the terminal command <code>help</code>, then explore the LAB and GAME.</p>
-      </div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-dot"></span>NEXUS</div>
+    <div class="top-actions">
+      <button id="themeBtn" class="icon-btn" title="Toggle theme">◐</button>
+      <button class="icon-btn" data-open="terminal">⌘</button>
     </div>
+  </header>
 
-    <div id="terminal" class="window">
-      <div class="window-head"><span>NEXUS // TERMINAL</span><button onclick="closeWindow('terminal')">×</button></div>
-      <div class="terminal-body">
-        <div id="output">NEXUS Terminal v1.0<br>Type <b>help</b> to see commands.</div>
-        <div class="prompt"><span>guest@nexus:~$</span><input id="command" autocomplete="off" spellcheck="false" autofocus></div>
-      </div>
+  <main class="hero">
+    <div class="eyebrow">INTERACTIVE WEB OS • ONLINE</div>
+    <h1>Welcome to <span>NEXUS</span></h1>
+    <p>A futuristic browser-based control room. Explore the lab, run the terminal, and test your reaction speed.</p>
+    <div class="hero-actions">
+      <button class="primary" data-open="terminal">Open Terminal</button>
+      <button class="secondary" data-open="lab">Signal Lab</button>
+      <button class="secondary" data-open="game">Reaction Game</button>
     </div>
-
-    <div id="lab" class="window">
-      <div class="window-head"><span>NEXUS // LAB</span><button onclick="closeWindow('lab')">×</button></div>
-      <div class="window-body">
-        <h2>Signal Lab</h2>
-        <p>Move the controls and watch the system react.</p>
-        <label>Signal intensity <input id="signal" type="range" min="0" max="100" value="55"></label>
-        <label>Orbit speed <input id="speed" type="range" min="1" max="100" value="35"></label>
-        <div id="labReadout" class="readout">SIGNAL: 55% // SPEED: 35%</div>
-        <button class="primary" onclick="randomSignal()">GENERATE RANDOM SIGNAL</button>
-      </div>
-    </div>
-
-    <div id="game" class="window game-window">
-      <div class="window-head"><span>NEXUS // REACTION TEST</span><button onclick="closeWindow('game')">×</button></div>
-      <div class="window-body center">
-        <p>Wait for the panel to turn green, then tap it.</p>
-        <button id="reaction" class="reaction">START TEST</button>
-        <div id="score">Best: --</div>
-      </div>
-    </div>
-
-    <footer>© 2026 NEXUS // Built for the web. <span>Press T to open terminal.</span></footer>
   </main>
 
+  <section class="core-wrap">
+    <div class="core">
+      <div class="core-ring r1"></div>
+      <div class="core-ring r2"></div>
+      <div class="core-ring r3"></div>
+      <div class="core-center">N</div>
+    </div>
+    <div class="core-label">NEXUS CORE <span>●</span></div>
+  </section>
+
+  <div class="dock">
+    <button data-open="about"><b>⌁</b><span>About</span></button>
+    <button data-open="terminal"><b>›_</b><span>Terminal</span></button>
+    <button data-open="lab"><b>∿</b><span>Signal Lab</span></button>
+    <button data-open="game"><b>⚡</b><span>Game</span></button>
+  </div>
+
+  <div class="window hidden" id="aboutWindow">
+    <div class="window-head"><span>ABOUT</span><button data-close="aboutWindow">×</button></div>
+    <div class="window-body">
+      <h2>NEXUS Web OS</h2>
+      <p>A zero-dependency futuristic interface running entirely in your browser.</p>
+      <div class="cards">
+        <div><strong>100%</strong><small>Browser based</small></div>
+        <div><strong>0</strong><small>Server required</small></div>
+        <div><strong>∞</strong><small>Possibilities</small></div>
+      </div>
+      <p class="muted">Tip: press <kbd>T</kbd> to open Terminal.</p>
+    </div>
+  </div>
+
+  <div class="window wide hidden" id="terminalWindow">
+    <div class="window-head"><span>NEXUS TERMINAL</span><button data-close="terminalWindow">×</button></div>
+    <div class="terminal" id="terminalOutput"></div>
+    <div class="terminal-input-row">
+      <span class="prompt">guest@nexus:~$</span>
+      <input id="terminalInput" autocomplete="off" spellcheck="false" aria-label="Terminal input">
+    </div>
+  </div>
+
+  <div class="window hidden" id="labWindow">
+    <div class="window-head"><span>SIGNAL LAB</span><button data-close="labWindow">×</button></div>
+    <div class="window-body">
+      <p class="muted">Move the controls and watch the system react.</p>
+      <label>Signal intensity <output id="signalValue">55%</output></label>
+      <input id="signalSlider" type="range" min="0" max="100" value="55">
+      <label>Orbit speed <output id="speedValue">35%</output></label>
+      <input id="speedSlider" type="range" min="0" max="100" value="35">
+      <div class="signal-readout">SIGNAL: <span id="signalText">55%</span> // SPEED: <span id="speedText">35%</span></div>
+      <button class="primary full" id="randomSignal">Generate Random Signal</button>
+    </div>
+  </div>
+
+  <div class="window hidden" id="gameWindow">
+    <div class="window-head"><span>REACTION TEST</span><button data-close="gameWindow">×</button></div>
+    <div class="window-body">
+      <p class="muted">Press START, wait for the panel to turn green, then tap it as fast as possible.</p>
+      <div id="reactionBox" class="reaction-box">READY</div>
+      <div class="game-row">
+        <button class="primary" id="gameStart">Start</button>
+        <div id="reactionResult">— ms</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
   <script src="script.js"></script>
 </body>
 </html>

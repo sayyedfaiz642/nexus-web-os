@@ -1,28 +1,29 @@
-# NEXUS // Interactive Web OS
+# NEXUS — Termux Edition
 
-A zero-dependency interactive website designed to run directly on GitHub Pages.
+A futuristic browser-based Web OS for GitHub Pages.
 
 ## Features
-- Animated boot screen
-- Starfield background
+- Boot animation + animated starfield
 - App-style windows
-- Working terminal with commands
-- Signal Lab controls
-- Reaction-time mini game with local best score
+- Termux-style simulated terminal
+- Virtual filesystem commands
+- Signal Lab
+- Reaction-time game
 - Dark/light theme
-- Mobile responsive
-- No server, database or API required
+- No backend, API key, or server required
 
-## Run locally
-Open `index.html` in a browser.
+## Terminal commands
+`help` `clear` `ls` `pwd` `cd` `mkdir` `touch` `cat` `echo` `whoami` `date` `uname` `neofetch` `scan` `ping` `history` `status` `matrix` `about` `lab` `game` `theme` `exit`
 
-## Publish on GitHub Pages
-1. Create a new GitHub repository, e.g. `nexus-web-os`.
-2. Upload `index.html`, `style.css`, `script.js`, and `README.md`.
-3. Open **Settings → Pages**.
-4. Under **Build and deployment**, select **Deploy from a branch**.
-5. Choose the `main` branch and `/ (root)`.
-6. Save and wait for the Pages URL to appear.
+The terminal is intentionally sandboxed in JavaScript. It does not execute real Android/Linux commands or access the device filesystem.
 
-## Easy upgrades
-Add a real portfolio, music player, AI API, login, Firebase database, weather widget, 3D scene, or your own projects.
+## GitHub Pages
+Upload these four files to the root of your repository:
+- index.html
+- style.css
+- script.js
+- README.md
+
+Then open your GitHub Pages URL. Changes can take a short time to appear.
+
+Tip: press `T` anywhere on the page to open the terminal.
