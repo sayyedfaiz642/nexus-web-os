@@ -1,53 +1,36 @@
-# NEXUS Ultimate Edition
+# NEXUS — Ultimate Edition
 
-NEXUS is a GitHub Pages friendly interactive web system built with four files.
+NEXUS is an original browser-based interactive environment designed for GitHub Pages. It uses four files only: `index.html`, `style.css`, `script.js`, and `README.md`.
 
-## What is new
+## Console
 
-### NEXUS Arena
-This is a real playable top-down survival game, not a reaction-time demo.
+The built-in console uses Unix-style command names and a persistent virtual filesystem. Package state and files are stored in browser local storage.
 
-- Move with WASD
-- Aim with mouse/touch
-- Hold FIRE to shoot
-- Enemy drones and tougher tanks
-- Waves
-- HP and damage
-- Score and best score
-- Energy-core pickups
-- Particles and effects
-- Mobile joystick + FIRE button
-- Best score saved in browser localStorage
+Examples:
 
-### NEXUS Terminal
-The terminal is a safe browser shell with:
+```text
+pkg update
+pkg upgrade
+pkg install python nodejs git nano
+pkg list-installed
+mkdir projects
+cd projects
+echo Hello > hello.txt
+cat hello.txt
+python -c "print('Hello from NEXUS')"
+node -e "console.log(25*4)"
+```
 
-`help`, `ls`, `pwd`, `cd`, `mkdir`, `touch`, `cat`, `rm`, `tree`, `echo`, `clear`, `history`, `whoami`, `date`, `uname`, `neofetch`, `status`, `ping`, `scan`, `matrix`, `calc`, `mkapp`, `apps`, `about`, `lab`, `game`, `theme`, `exit`
+Other commands include `ls`, `pwd`, `cd`, `mkdir`, `touch`, `cat`, `rm`, `cp`, `mv`, `tree`, `echo`, `calc`, `history`, `ping`, `scan`, `neofetch`, `status`, `mkapp`, `apps`, `matrix`, `theme`, `game`, and `lab`.
 
-### App generator
+## Important technical limit
 
-Try:
+This is an original browser implementation, not a copy of another terminal application. GitHub Pages cannot execute native Android/Linux binaries, install real system packages into the phone, or access the device filesystem from a normal web page. Therefore package operations and runtimes are implemented inside the NEXUS browser sandbox. The commands still have persistent state and useful behavior inside that environment.
 
-`mkapp calculator My Calculator`
-`mkapp todo My Tasks`
-`mkapp notes My Notes`
-`mkapp stopwatch My Timer`
-`mkapp quiz My Quiz`
+## Arena
 
-The command generates a standalone HTML app and downloads it to the device/browser downloads.
+NEXUS Arena is a real canvas survival game with movement, aiming, shooting, enemies, waves, HP, pickups, particles, score and mobile controls.
 
-## Important
-The terminal is a browser sandbox. It cannot execute real Linux/Android commands, install packages, scan devices, or access the phone filesystem.
+## Deploy
 
-## GitHub Pages installation
-
-Replace all four files in the repository root:
-
-- `index.html`
-- `style.css`
-- `script.js`
-- `README.md`
-
-Commit the changes, wait briefly for GitHub Pages to rebuild, then refresh the site.
-
-Do not upload the ZIP itself as the replacement for the four source files.
+Upload/replace all four files together in the GitHub Pages repository. Do not upload the ZIP as a replacement for the four source files.

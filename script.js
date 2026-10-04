@@ -82,7 +82,9 @@ function toast(message){
 }
 
 /* =========================================================
-   NEXUS TERMINAL — safe browser shell + app generator
+   NEXUS CONSOLE — original browser Linux-style environment
+   NOTE: this is an original implementation. It cannot execute
+   native Android/Linux binaries from a GitHub Pages browser tab.
    ========================================================= */
 const terminal=$("#terminalOutput"), termInput=$("#terminalInput"), termPath=$("#termPath");
 let cwd="/home/guest", commandHistory=[], histIndex=0;
@@ -91,164 +93,151 @@ const vfs={
   "/home/guest":{type:"dir"},
   "/home/guest/projects":{type:"dir"},
   "/home/guest/downloads":{type:"dir"},
-  "/home/guest/about.txt":{type:"file",content:"NEXUS — browser operating system\\nBuilt for GitHub Pages."},
-  "/home/guest/nexus.conf":{type:"file",content:"mode=browser\\nuser=guest\\nserver=none"}
+  "/home/guest/.config":{type:"dir"},
+  "/home/guest/about.txt":{type:"file",content:"NEXUS browser environment\nUnix-style commands, a virtual filesystem and a local package database."},
+  "/home/guest/nexus.conf":{type:"file",content:"mode=browser\nuser=guest\nnetwork=browser\nexecution=virtual"}
 };
+const packageCatalog={
+  "coreutils":{v:"1.4.0",size:"182 KB",desc:"basic filesystem utilities"},
+  "python":{v:"3.12.0",size:"4.8 MB",desc:"Python-like console runtime"},
+  "nodejs":{v:"22.1.0",size:"7.2 MB",desc:"JavaScript console runtime"},
+  "git":{v:"2.46.0",size:"2.1 MB",desc:"local project version tool"},
+  "nano":{v:"8.1.0",size:"420 KB",desc:"text editor"},
+  "curl":{v:"8.9.0",size:"610 KB",desc:"HTTP utility simulation"},
+  "wget":{v:"1.21.4",size:"390 KB",desc:"download utility simulation"},
+  "jq":{v:"1.7.1",size:"310 KB",desc:"JSON utility"},
+  "figlet":{v:"2.2.5",size:"95 KB",desc:"ASCII banner utility"},
+  "neofetch":{v:"7.1.0",size:"75 KB",desc:"system information"}
+};
+let installed=JSON.parse(localStorage.getItem("nexus-installed")||'{"coreutils":"1.4.0"}');
+let pkgIndex=JSON.parse(localStorage.getItem("nexus-pkg-index")||"null");
+if(!pkgIndex) pkgIndex={updated:0,packages:Object.keys(packageCatalog)};
 
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
 function out(text="",cls=""){
   const d=document.createElement("div"); if(cls)d.className=cls;
-  d.innerHTML=esc(text).replace(/\n/g,"<br>");
-  terminal.appendChild(d); terminal.scrollTop=terminal.scrollHeight;
+  d.innerHTML=esc(text).replace(/\n/g,"<br>"); terminal.appendChild(d); terminal.scrollTop=terminal.scrollHeight;
 }
 function outHTML(html,cls=""){
   const d=document.createElement("div"); if(cls)d.className=cls;
   d.innerHTML=html; terminal.appendChild(d); terminal.scrollTop=terminal.scrollHeight;
 }
+function saveState(){localStorage.setItem("nexus-vfs",JSON.stringify(vfs));localStorage.setItem("nexus-installed",JSON.stringify(installed));localStorage.setItem("nexus-pkg-index",JSON.stringify(pkgIndex));}
+(function restore(){try{const x=JSON.parse(localStorage.getItem("nexus-vfs")||"null");if(x)Object.assign(vfs,x);}catch{}})();
 function pathNorm(input){
-  if(!input || input==="~") return "/home/guest";
+  if(!input||input==="~") return "/home/guest";
   let p=input.startsWith("~/")?"/home/guest/"+input.slice(2):input.startsWith("/")?input:cwd+"/"+input;
   const stack=[];
-  for(const part of p.split("/")){
-    if(!part||part===".") continue;
-    if(part==="..") stack.pop(); else stack.push(part);
-  }
+  for(const part of p.split("/")){if(!part||part===".")continue;if(part==="..")stack.pop();else stack.push(part)}
   return "/"+stack.join("/");
 }
-function showPath(){return cwd==="/home/guest"?"~":"~"+cwd.slice("/home/guest".length);}
+function showPath(){return cwd==="/home/guest"?"~": "~"+cwd.slice("/home/guest".length);}
 function refreshPrompt(){termPath.textContent=showPath();}
-function children(dir){
-  const prefix=dir.endsWith("/")?dir:dir+"/", names=[];
-  for(const key of Object.keys(vfs)){
-    if(key.startsWith(prefix)){
-      const rest=key.slice(prefix.length);
-      if(rest && !rest.includes("/")) names.push(rest+(vfs[key].type==="dir"?"/":""));
-    }
-  }
-  return names.sort();
+function children(dir){return Object.keys(vfs).filter(k=>k!==dir&&k.startsWith(dir+"/")&&!k.slice(dir.length+1).includes("/"));}
+function basename(path){return path.split("/").filter(Boolean).pop()||"/";}
+function ensureParent(path){const par=path.split("/").slice(0,-1).join("/")||"/";return vfs[par]?.type==="dir";}
+function cmdLine(cmd,args){return `<span class="term-dim">guest@nexus:${esc(showPath())} $</span> <span>${esc(cmd+(args.length?" "+args.join(" "):""))}</span>`;}
+function saveVFS(){localStorage.setItem("nexus-vfs",JSON.stringify(vfs));}
+
+function printHelp(){
+ out("NEXUS CONSOLE — command reference");
+ out("Filesystem:  ls  cd  pwd  mkdir  touch  cat  rm  cp  mv  tree  echo");
+ out("Packages:    pkg update  |  pkg upgrade  |  pkg install <name>  |  pkg remove <name>");
+ out("            pkg search <word>  |  pkg list-installed  |  pkg info <name>");
+ out("Runtime:     python  |  node  |  sh  |  calc  |  clear  |  history");
+ out("Network:     ping  |  curl  |  wget  |  scan");
+ out("System:      uname  |  whoami  |  date  |  env  |  export  |  neofetch  |  status");
+ out("Tools:       nano  |  figlet  |  git  |  mkapp  |  apps  |  matrix");
+ out("Tip: commands are stateful and survive refresh. Type 'about' for limits.");
 }
-function tokenize(line){
-  const m=line.match(/"[^"]*"|'[^']*'|[^\s]+/g)||[];
-  return m.map(x=>x.replace(/^['"]|['"]$/g,""));
+function pkgUpdate(){
+ out("Checking NEXUS package indexes...");
+ ["main","community","science"].forEach((r,i)=>out(`[${"+".repeat(i+1)}] ${r.padEnd(10)} index synchronized`));
+ pkgIndex.updated=Date.now();pkgIndex.packages=Object.keys(packageCatalog);saveState();
+ out("Reading package lists... Done","ok");out(`${Object.keys(packageCatalog).length} packages available.`);out("Run 'pkg upgrade' to upgrade installed packages.");
 }
-function downloadText(filename,content,mime="text/html"){
-  const blob=new Blob([content],{type:mime});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename;
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+function pkgInstall(names){
+ if(!names.length){out("pkg: missing package name");return}
+ names.forEach(name=>{
+  const meta=packageCatalog[name];
+  if(!meta){out(`E: Unable to locate package ${name}`);return}
+  if(installed[name]){out(`${name} ${installed[name]} is already installed.`);return}
+  out(`Resolving ${name}...`);out(`Downloading ${name}_${meta.v} (${meta.size})... 100%`);out(`Unpacking ${name}...`);installed[name]=meta.v;out(`Setting up ${name} (${meta.v})... Done`,"ok");
+ });saveState();
 }
-function makeApp(kind,name){
-  const safe=name || kind;
-  const slug=safe.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "nexus-app";
-  let body="";
-  if(kind==="calculator") body=`<div class="calc"><input id="display" readonly><div class="keys">${["7","8","9","/","4","5","6","*","1","2","3","-","0",".","=","+"].map(x=>`<button onclick="press('${x}')">${x}</button>`).join("")}</div></div><script>function press(x){let d=document.getElementById('display');if(x==='='){try{d.value=Function('return '+d.value)()}catch(e){d.value='ERR'}}else d.value+=x}<\/script>`;
-  else if(kind==="todo") body=`<h1>${esc(safe)}</h1><input id="task" placeholder="New task"><button onclick="add()">ADD</button><ul id="list"></ul><script>function add(){let i=document.getElementById('task'),l=document.getElementById('list');if(!i.value)return;let x=document.createElement('li');x.textContent=i.value;x.onclick=()=>x.remove();l.appendChild(x);i.value=''}<\/script>`;
-  else if(kind==="notes") body=`<h1>${esc(safe)}</h1><textarea id="n" placeholder="Write your notes..."></textarea><button onclick="localStorage.nexusNotes=n.value;alert('Saved')">SAVE</button><script>n.value=localStorage.nexusNotes||''<\/script>`;
-  else if(kind==="stopwatch") body=`<h1>${esc(safe)}</h1><div id="time">0.0</div><button onclick="start()">START</button><button onclick="stop()">STOP</button><button onclick="reset()">RESET</button><script>let t=0,id;function start(){if(!id)id=setInterval(()=>{t+=.1;time.textContent=t.toFixed(1)},100)}function stop(){clearInterval(id);id=null}function reset(){stop();t=0;time.textContent='0.0'}<\/script>`;
-  else if(kind==="quiz") body=`<h1>NEXUS QUIZ</h1><p id="q">Which language runs in a browser?</p><button onclick="ans('JavaScript')">JavaScript</button><button onclick="ans('C')">C</button><p id="r"></p><script>function ans(x){r.textContent=x==='JavaScript'?'Correct!':'Try again.'}<\/script>`;
-  else body=`<h1>${esc(safe)}</h1><p>Generated by NEXUS Terminal.</p><button onclick="alert('NEXUS app is alive!')">TEST APP</button>`;
-  const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(safe)}</title><style>body{font-family:system-ui;max-width:700px;margin:50px auto;padding:20px;background:#07101d;color:#eaf3ff}button,input,textarea{padding:12px;margin:5px;border-radius:8px;border:1px solid #345;background:#101c2d;color:#fff}textarea{width:100%;height:300px}.keys{display:grid;grid-template-columns:repeat(4,1fr)}.keys button{font-size:20px}#display{width:90%;font-size:25px}li{padding:10px;cursor:pointer}</style></head><body>${body}</body></html>`;
-  downloadText(slug+".html",html);
-  out("Generated "+slug+".html and started download.","ok");
+function pkgUpgrade(){
+ let n=0;for(const name of Object.keys(installed)){if(packageCatalog[name]&&installed[name]!==packageCatalog[name].v){out(`Upgrading ${name} ${installed[name]} -> ${packageCatalog[name].v}... Done`);installed[name]=packageCatalog[name].v;n++}}
+ out(n?`${n} package(s) upgraded.`:"All installed packages are up to date.","ok");saveState();
 }
+function pkgCommand(args){
+ const sub=(args.shift()||"").toLowerCase();
+ if(sub==="update"){pkgUpdate();return}
+ if(sub==="upgrade"){pkgUpgrade();return}
+ if(["install","add"].includes(sub)){pkgInstall(args);return}
+ if(["remove","uninstall"].includes(sub)){args.forEach(n=>{if(n==="coreutils"){out("E: coreutils is required by the base environment");return}if(installed[n]){delete installed[n];out(`Removing ${n}... Done`)}else out(`${n} is not installed.`)});saveState();return}
+ if(sub==="search"){const q=(args.join(" ")||"").toLowerCase();Object.entries(packageCatalog).filter(([n,m])=>!q||n.includes(q)||m.desc.includes(q)).forEach(([n,m])=>out(`${n.padEnd(12)} ${m.v.padEnd(9)} ${m.desc}`));return}
+ if(["list-installed","list"].includes(sub)){Object.entries(installed).forEach(([n,v])=>out(`${n.padEnd(12)} ${v}`));return}
+ if(["info","show"].includes(sub)){const n=args[0],m=packageCatalog[n];if(!m){out(`Package '${n||""}' not found.`);return}out(`${n}\n Version: ${m.v}\n Size: ${m.size}\n Description: ${m.desc}`);return}
+ out("Usage: pkg {update|upgrade|install|remove|search|list-installed|info} ...");
+}
+function ls(args){const target=pathNorm(args[0]||cwd),node=vfs[target];if(!node){out(`ls: cannot access '${args[0]||"."}': No such file or directory`);return}if(node.type==="file"){out(basename(target));return}out(children(target).map(k=>vfs[k].type==="dir"?basename(k)+"/":basename(k)).join("  ")||"(empty)");}
+function tree(dir=cwd,prefix=""){
+ out(basename(dir)||"/");
+ function walk(d,p){for(const k of children(d)){const last=children(d).at(-1)===k;out(p+(last?"└── ":"├── ")+basename(k)+(vfs[k].type==="dir"?"/":""));if(vfs[k].type==="dir")walk(k,p+(last?"    ":"│   "));}}
+ walk(dir,prefix);
+}
+function mkdir(args){if(!args.length){out("mkdir: missing operand");return}for(const a of args){const p=pathNorm(a);if(vfs[p]){out(`mkdir: cannot create '${a}': File exists`);continue}if(!ensureParent(p)){out(`mkdir: cannot create '${a}': No such directory`);continue}vfs[p]={type:"dir"};out(`created ${p}`)}saveVFS();}
+function touch(args){if(!args.length){out("touch: missing file operand");return}for(const a of args){const p=pathNorm(a);if(!vfs[p]){if(!ensureParent(p)){out(`touch: cannot touch '${a}': No such directory`);continue}vfs[p]={type:"file",content:""};out(`created ${p}`)}}saveVFS();}
+function cat(args){if(!args.length){out("cat: missing file operand");return}for(const a of args){const p=pathNorm(a),n=vfs[p];if(!n){out(`cat: ${a}: No such file or directory`);continue}if(n.type!=="file"){out(`cat: ${a}: Is a directory`);continue}out(n.content||"");}}
+function remove(args){if(!args.length){out("rm: missing operand");return}for(const a of args){const p=pathNorm(a);if(!vfs[p]){out(`rm: cannot remove '${a}': No such file or directory`);continue}if(p==="/home/guest"){out("rm: refusing to remove home");continue}const keys=Object.keys(vfs).filter(k=>k===p||k.startsWith(p+"/"));keys.forEach(k=>delete vfs[k]);out(`removed ${p}`)}saveVFS();if(!vfs[cwd]){cwd="/home/guest";refreshPrompt();}}
+function copyMove(args,move){if(args.length<2){out(`${move?"mv":"cp"}: missing destination file operand`);return}const src=pathNorm(args[0]),dst=pathNorm(args[1]);if(!vfs[src]){out(`${move?"mv":"cp"}: ${args[0]}: No such file or directory`);return}if(vfs[src].type==="dir"){out(`${move?"mv":"cp"}: directory operation is limited in this browser shell`);return}const dest=vfs[dst]?.type==="dir"?dst+"/"+basename(src):dst;if(!ensureParent(dest)){out(`cannot write '${args[1]}': No such directory`);return}vfs[dest]={type:"file",content:vfs[src].content};if(move)delete vfs[src];saveVFS();out(`${move?"moved":"copied"} ${src} -> ${dest}`);}
+function echoCmd(args){const text=args.join(" ");const m=text.match(/^(.*)\s*(>>|>)\s*([^>]+)$/);if(!m){out(text);return}const content=m[1].trim(),op=m[2],p=pathNorm(m[3].trim());if(!ensureParent(p)){out(`echo: ${m[3].trim()}: No such directory`);return}if(!vfs[p])vfs[p]={type:"file",content:""};if(vfs[p].type!=="file"){out("echo: target is a directory");return}vfs[p].content=op===">>"?(vfs[p].content? vfs[p].content+"\n":"")+content:content;saveVFS();}
+function simpleCalc(expr){if(!/^[0-9+\-*/%().\s]+$/.test(expr))return null;try{return Function(`"use strict";return (${expr})`)()}catch{return null}}
+function runPython(args){
+ if(!installed.python){out("python: command not found\nInstall it with: pkg install python");return}
+ const code=args.join(" ").replace(/^(-c\s+)?[\"']|[\"']$/g,"").trim();
+ if(!code){out("NEXUS Python console\nType: python -c \"print('hello')\"");return}
+ const pm=code.match(/^print\((.*)\)$/s);if(pm){let x=pm[1].trim();try{if(/^['\"`].*['\"`]$/.test(x))out(x.slice(1,-1));else if(simpleCalc(x)!==null)out(String(simpleCalc(x)));else out(x)}catch{out("Python runtime error")};return}
+ out("Python subset: print(...), arithmetic expressions. Native modules are unavailable.");
+}
+function runNode(args){const code=args.join(" ").replace(/^-e\s+/,"").replace(/^['\"]|['\"]$/g,"");if(!code){out("NEXUS Node console\nType: node -e \"console.log('hello')\"");return}const m=code.match(/console\.log\((.*)\)/);if(m){let x=m[1].trim();if(/^['\"`].*['\"`]$/.test(x))out(x.slice(1,-1));else if(simpleCalc(x)!==null)out(String(simpleCalc(x)));else out(x);return}out("Node subset: console.log(...) and arithmetic expressions.");}
+function shCommand(args){const code=args.join(" ").replace(/^-c\s+/,"").replace(/^['\"]|['\"]$/g,"");if(!code){out("NEXUS shell: use sh -c \"command\"");return}code.split(/\s*&&\s*|\s*;\s*/).filter(Boolean).forEach(runCommand);}
+function mkapp(args){const type=(args.shift()||"blank").toLowerCase(),title=args.join(" ")||"NEXUS App";const safe=title.replace(/[^a-z0-9_-]+/gi,"-").toLowerCase();const templates={calculator:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}input,button{padding:12px;margin:4px}</style><h1>${esc(title)}</h1><input id=a placeholder="25*4"><button onclick="o.textContent=Function('return '+a.value)()">Calculate</button><pre id=o></pre>`,todo:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}</style><h1>${esc(title)}</h1><input id=i><button onclick="if(i.value){l.innerHTML+='<li>'+i.value+'</li>';i.value=''}">Add</button><ul id=l></ul>`,notes:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}textarea{width:100%;height:60vh}</style><h1>${esc(title)}</h1><textarea placeholder="Write..."></textarea>`,stopwatch:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}button{padding:12px}</style><h1>${esc(title)}</h1><h2 id=t>0.0</h2><button onclick="s??">Start</button><script>let x=0,r;function s(){clearInterval(r);r=setInterval(()=>t.textContent=(x+=.1).toFixed(1),100)}</script>`,quiz:`<!doctype html><title>${esc(title)}</title><style>body{font-family:system-ui;background:#10131a;color:#fff;padding:30px}button{padding:12px}</style><h1>${esc(title)}</h1><p>What is 2 + 2?</p><button onclick="o.textContent='Correct'">4</button><button onclick="o.textContent='Try again'">5</button><h2 id=o></h2>`,blank:`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head><body><h1>${esc(title)}</h1><p>Generated by NEXUS.</p></body></html>`};let html=templates[type]||templates.blank;const blob=new Blob([html],{type:"text/html"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=safe+".html";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);out(`Generated ${safe}.html and started download.` ,"ok");}
+function apps(){out("NEXUS APP GENERATOR\nmkapp calculator <title>\nmkapp todo <title>\nmkapp notes <title>\nmkapp stopwatch <title>\nmkapp quiz <title>\nmkapp blank <title>");}
+function neofetch(){out(`NEXUS\n------------------------------\nOS        NEXUS Browser OS\nKernel    virtual-6.x\nShell     nexus-sh\nUser      guest\nHome      /home/guest\nPackages  ${Object.keys(installed).length}\nStorage   local browser storage\nNetwork   browser sandbox`);}
+function status(){out(`CORE       ONLINE\nCONSOLE    READY\nPACKAGE DB ${pkgIndex.updated?"SYNCED":"NEW"}\nPACKAGES   ${Object.keys(installed).length} installed\nFILES      ${Object.keys(vfs).length}\nARENA      READY\nLAB        READY`);}
+function matrix(){let chars="01<>[]{}$#@";let s="";for(let i=0;i<260;i++)s+=chars[Math.floor(Math.random()*chars.length)];out(s);}
+function ping(host="nexus"){let n=0;out(`PING ${host} (virtual) 32 bytes of data`);const timer=setInterval(()=>{n++;out(`64 bytes from ${host}: seq=${n} time=${(12+Math.random()*18).toFixed(1)} ms`);if(n>=4){clearInterval(timer);out(`--- ${host} statistics ---\n4 packets transmitted, 4 received, 0% packet loss`)}},280)}
+function scan(){out("NEXUS local service scan\n22  virtual-shell   open\n80  web-interface   open\n443 secure-interface open\nNo external device access is performed.");}
+function curlCmd(args){if(!args.length){out("curl: try 'curl <url>'");return}out(`curl: browser sandbox request simulated for ${args[0]}\nExternal downloads require a server endpoint and permission.`);}
 function runCommand(line){
-  const p=tokenize(line), cmd=(p.shift()||"").toLowerCase(), a=p;
-  if(!cmd)return;
-  commandHistory.push(line); histIndex=commandHistory.length;
-  out(`guest@nexus:${showPath()}$ ${line}`,"cmd");
-  switch(cmd){
-    case "help":
-      out("NEXUS Shell v2.0 — browser development environment","ok");
-      out("FILES: ls  pwd  cd  mkdir  touch  cat  rm  tree");
-      out("TEXT: echo  clear  history");
-      out("SYSTEM: whoami  date  uname  neofetch  status");
-      out("NETWORK DEMO: ping  scan");
-      out("APPS: mkapp  apps  about  lab  game  theme");
-      out("TOOLS: calc  matrix  cls  exit");
-      out("mkapp examples: mkapp calculator My Calc | mkapp todo Tasks | mkapp quiz Quiz");
-      out("This shell is sandboxed; it does not execute real Linux/Android commands.","warn"); break;
-    case "clear": terminal.innerHTML=""; break;
-    case "cls": terminal.innerHTML=""; break;
-    case "pwd": out(cwd); break;
-    case "whoami": out("guest"); break;
-    case "date": out(new Date().toString()); break;
-    case "uname": out("NEXUS-Web 2.0 browser-runtime x86_64"); break;
-    case "ls": {
-      const t=pathNorm(a[0]||cwd);
-      if(!vfs[t]||vfs[t].type!=="dir"){out("ls: no such directory","err");break}
-      out(children(t).join("   ")||"(empty)"); break;
-    }
-    case "cd": {
-      const t=pathNorm(a[0]||"~");
-      if(!vfs[t]||vfs[t].type!=="dir"){out("cd: no such directory: "+t,"err");break}
-      cwd=t; refreshPrompt(); break;
-    }
-    case "mkdir": {
-      if(!a[0]){out("mkdir: missing operand","err");break}
-      const t=pathNorm(a[0]), parent=t.slice(0,t.lastIndexOf("/"))||"/";
-      if(vfs[t]){out("mkdir: already exists","err");break}
-      if(!vfs[parent]||vfs[parent].type!=="dir"){out("mkdir: parent missing","err");break}
-      vfs[t]={type:"dir"}; out("created directory "+a[0],"ok"); break;
-    }
-    case "touch": {
-      if(!a[0]){out("touch: missing file","err");break}
-      const t=pathNorm(a[0]), parent=t.slice(0,t.lastIndexOf("/"))||"/";
-      if(!vfs[parent]){out("touch: parent missing","err");break}
-      vfs[t]={type:"file",content:""}; out("created "+a[0],"ok"); break;
-    }
-    case "cat": {
-      const t=pathNorm(a[0]||"");
-      if(!vfs[t]||vfs[t].type!=="file"){out("cat: file not found","err");break}
-      out(vfs[t].content); break;
-    }
-    case "echo": out(a.join(" ")); break;
-    case "rm": {
-      const t=pathNorm(a[0]||"");
-      if(!vfs[t]||t==="/home/guest"){out("rm: target not found or protected","err");break}
-      delete vfs[t]; out("removed "+a[0],"ok"); break;
-    }
-    case "tree":
-      out("/home/guest");
-      out(children("/home/guest").map(x=>"├─ "+x).join("\n")); break;
-    case "history": commandHistory.forEach((x,i)=>out(`${i+1}  ${x}`)); break;
-    case "neofetch":
-      outHTML(`<span class="ok">███ NEXUS WEB OS</span><br>User: guest<br>Shell: nexus-sh 2.0<br>Mode: GitHub Pages<br>Runtime: Browser JavaScript<br>Game: NEXUS Arena<br>Theme: ${document.body.classList.contains("light")?"light":"dark"}`); break;
-    case "status": out("CORE: ONLINE | TERMINAL: READY | ARENA: READY | LAB: READY","ok"); break;
-    case "ping":
-      if(!a[0]){out("ping: missing host","err");break}
-      out("PING "+a[0]+" — simulated");
-      let n=0; const id=setInterval(()=>{out("64 bytes: time="+(8+Math.floor(Math.random()*45))+" ms");if(++n===4)clearInterval(id)},350); break;
-    case "scan":
-      out("NEXUS scanner — virtual environment only","ok");
-      out("localhost   ONLINE\nnexus-core   ONLINE\narena-engine ONLINE\nExternal device/network scan blocked by browser sandbox.","warn"); break;
-    case "matrix":
-      let rows=0; const mid=setInterval(()=>{out(Array.from({length:50},()=>Math.random()>.5?"1":"0").join(""));if(++rows>12)clearInterval(mid)},70); break;
-    case "calc": {
-      const expr=a.join(" ");
-      if(!expr){out("Usage: calc 12*(5+2)","warn");break}
-      if(!/^[0-9+\-*/().%\s]+$/.test(expr)){out("calc: numbers/operators only","err");break}
-      try{out(String(Function('"use strict";return ('+expr+')')()),"ok")}catch{out("calc: invalid expression","err")} break;
-    }
-    case "mkapp": {
-      const kind=(a[0]||"").toLowerCase(), name=a.slice(1).join(" ")||kind;
-      if(!["calculator","todo","notes","stopwatch","quiz","blank"].includes(kind)){out("Usage: mkapp calculator|todo|notes|stopwatch|quiz App Name","warn");break}
-      makeApp(kind,name); break;
-    }
-    case "apps": out("calculator  todo  notes  stopwatch  quiz  blank"); break;
-    case "about": openWindow("about"); break;
-    case "lab": openWindow("lab"); break;
-    case "game": openWindow("game"); break;
-    case "theme": document.body.classList.toggle("light");localStorage.setItem("nexus-theme",document.body.classList.contains("light")?"light":"dark");out("Theme changed.","ok");break;
-    case "exit": closeWindow("terminalWindow"); break;
-    default: out(cmd+": command not found. Type help.","err");
-  }
+ const raw=line.trim();if(!raw)return;
+ const chain=raw.split(/\s*(?:&&|;)\s*/).filter(Boolean);
+ if(chain.length>1){chain.forEach(runCommand);return}
+ const parts=raw.match(/(?:[^\s\"']+|\"[^\"]*\"|'[^']*')+/g)||[];const cmd=(parts.shift()||"").replace(/^['\"]|['\"]$/g,"").toLowerCase();const args=parts.map(x=>x.replace(/^['\"]|['\"]$/g,""));
+ if(cmd==="help"||cmd==="?"){printHelp();return} if(cmd==="clear"){terminal.innerHTML="";return} if(cmd==="pwd"){out(cwd);return} if(cmd==="ls"||cmd==="dir"){ls(args);return} if(cmd==="cd"){const p=pathNorm(args[0]||"~");if(!vfs[p])out(`cd: ${args[0]||"~"}: No such file or directory`);else if(vfs[p].type!=="dir")out(`cd: ${args[0]}: Not a directory`);else{cwd=p;refreshPrompt()}return} if(cmd==="mkdir"){mkdir(args);return} if(cmd==="touch"){touch(args);return} if(cmd==="cat"){cat(args);return} if(cmd==="rm"||cmd==="rmdir"){remove(args);return} if(cmd==="cp"){copyMove(args,false);return} if(cmd==="mv"){copyMove(args,true);return} if(cmd==="tree"){tree(pathNorm(args[0]||cwd));return} if(cmd==="echo"){echoCmd(args);return}
+ if(cmd==="pkg"||cmd==="apt"||cmd==="apt-get"){pkgCommand(args);return}
+ if(cmd==="python"||cmd==="python3"){runPython(args);return} if(cmd==="node"||cmd==="nodejs"){if(!installed.nodejs){out("node: command not found\nInstall it with: pkg install nodejs");return}runNode(args);return} if(cmd==="sh"||cmd==="bash"){shCommand(args);return}
+ if(cmd==="calc"){const r=simpleCalc(args.join(" "));out(r===null?"calc: invalid expression":String(r));return}
+ if(cmd==="whoami"){out("guest");return} if(cmd==="date"){out(new Date().toString());return} if(cmd==="uname"){out("NEXUS virtual-kernel 6.8 browser-js x86_64");return} if(cmd==="env"){out("USER=guest\nHOME=/home/guest\nSHELL=/bin/nexus-sh\nTERM=nexus-256color\nPWD="+cwd);return} if(cmd==="export"){out("export: environment variables are session-local in this browser shell");return}
+ if(cmd==="neofetch"){neofetch();return} if(cmd==="status"){status();return} if(cmd==="ping"){ping(args[0]||"nexus");return} if(cmd==="scan"){scan();return} if(cmd==="curl"||cmd==="wget"){curlCmd(args);return}
+ if(cmd==="history"){commandHistory.forEach((x,i)=>out(`${i+1}  ${x}`));return} if(cmd==="matrix"){matrix();return} if(cmd==="mkapp"){mkapp(args);return} if(cmd==="apps"){apps();return} if(cmd==="nano"){if(!installed.nano){out("nano: command not found\nInstall it with: pkg install nano");return}out("NEXUS nano mode is available for simple file creation. Use: echo text > file");return}
+ if(cmd==="git"){if(!installed.git){out("git: command not found\nInstall it with: pkg install git");return}out("NEXUS git: repository operations are local-only in the browser sandbox.\nTry: git init | git status");return}
+ if(cmd==="about"){out("NEXUS is an original browser environment.\nIt reproduces useful Unix-style command behavior with a virtual filesystem and package database.\nA browser cannot execute native Android/Linux binaries or access the phone filesystem.");return}
+ if(cmd==="lab"){openWindow("lab");return} if(cmd==="game"){openWindow("game");return} if(cmd==="theme"){$("#themeBtn").click();return} if(cmd==="exit"){closeWindow("terminalWindow");return}
+ out(`${cmd}: command not found. Type 'help' for commands.`);
+}
+function bootTerminal(){
+ out("NEXUS CONSOLE v2.0");out("Original Unix-style browser environment");out("Type 'help' to list commands.");out("Tip: pkg update && pkg install python");refreshPrompt();
 }
 termInput.addEventListener("keydown",e=>{
-  if(e.key==="Enter"){runCommand(termInput.value);termInput.value="";}
-  if(e.key==="ArrowUp"){e.preventDefault();if(histIndex>0)histIndex--;termInput.value=commandHistory[histIndex]||"";}
-  if(e.key==="ArrowDown"){e.preventDefault();if(histIndex<commandHistory.length-1)histIndex++;else{histIndex=commandHistory.length;termInput.value=""}termInput.value=commandHistory[histIndex]||"";}
+ if(e.key==="Enter"){const line=termInput.value.trim();if(line){outHTML(cmdLine(...(line.match(/(?:[^\s\"']+|\"[^\"]*\"|'[^']*')+/g)||[line]).slice(0,1),[]));commandHistory.push(line);histIndex=commandHistory.length;runCommand(line);localStorage.setItem("nexus-history",JSON.stringify(commandHistory));}termInput.value="";refreshPrompt();}
+ if(e.key==="ArrowUp"){e.preventDefault();histIndex=Math.max(0,histIndex-1);termInput.value=commandHistory[histIndex]||""}
+ if(e.key==="ArrowDown"){e.preventDefault();histIndex=Math.min(commandHistory.length,histIndex+1);termInput.value=commandHistory[histIndex]||""}
+ if(e.key==="Tab"){e.preventDefault();const partial=termInput.value.trim();const pool=["help","clear","ls","cd","pwd","mkdir","touch","cat","rm","cp","mv","tree","echo","pkg","python","node","sh","calc","whoami","date","uname","env","export","neofetch","status","ping","scan","curl","wget","history","matrix","mkapp","apps","nano","git","about","lab","game","theme","exit"];const hit=pool.find(x=>x.startsWith(partial));if(hit)termInput.value=hit+" ";}
 });
-out("NEXUS Shell v2.0 — ready","ok");
-out('Type "help" for commands. Try: apps, mkapp todo Tasks, calc 12*8, neofetch');
+try{commandHistory=JSON.parse(localStorage.getItem("nexus-history")||"[]")}catch{commandHistory=[]}
+bootTerminal();
 
 /* =========================================================
    NEXUS ARENA — actual playable top-down survival game
