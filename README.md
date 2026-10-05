@@ -1,50 +1,15 @@
-# NEXUS — Native Browser System
+# NEXUS // Quantum Workstation
 
-NEXUS is an original browser desktop/console. It is designed around **real browser APIs**, not fake success messages.
+A redesigned four-file GitHub Pages build. Replace **index.html, style.css, script.js and README.md together**.
 
-## Real commands
+## Included
+- NEXUS futuristic desktop UI
+- Terminal with persistent browser virtual filesystem
+- Linux-style commands: `ls`, `cd`, `pwd`, `mkdir`, `touch`, `cat`, `echo`, `rm`, `tree`, `history`, `calc`, `env`, `export`
+- Package-state commands: `pkg update`, `pkg upgrade`, `pkg install`, `pkg remove`, `pkg search`, `pkg list-installed`
+- Real browser APIs: microphone, camera, notifications, vibration, clipboard, downloads, share, fullscreen and fetch where browser permissions/CORS allow
+- Arena survival game with WASD/touch, shooting, enemies, waves, HP, score and best score
+- Mobile responsive UI and persistent localStorage state
 
-- `mic` — requests microphone permission and measures live input level
-- `mic off` — stops the microphone stream
-- `camera` — requests camera permission and opens a live preview
-- `notify Hello` — sends a real browser notification after permission
-- `vibrate 300` — requests device vibration where supported
-- `clipboard Hello` — writes to the real system clipboard
-- `download file.txt Hello` — creates a real downloadable file
-- `share Hello` — opens the device/browser share sheet where supported
-- `fullscreen` — requests browser fullscreen
-- `fetch https://...` — makes a real CORS-enabled web request when the target allows it
-- `webinfo` — reports which browser capabilities are available
-
-## NEXUS environment
-
-The filesystem and package database are persistent in browser storage. Commands such as `ls`, `cd`, `mkdir`, `touch`, `cat`, `cp`, `mv`, `rm`, `tree`, `echo`, and `history` actually modify/read that NEXUS environment.
-
-`pkg update`, `pkg install`, `pkg remove`, `pkg search`, `pkg info`, and `pkg upgrade` update the NEXUS package state.
-
-### Python
-
-After `pkg install python`, the `python` command loads a real Python WebAssembly runtime in the browser. Example:
-
-```text
-pkg update
-pkg install python
-python -c "print(2+2)"
-```
-
-This executes Python code inside the browser sandbox; it does **not** install native Android/Linux binaries.
-
-## Important browser limitation
-
-A GitHub Pages website cannot execute arbitrary Android/Linux commands or write to protected phone directories. NEXUS therefore uses genuine browser capabilities wherever the browser exposes them, and a persistent sandbox for its own filesystem/package environment. It never claims a virtual operation changed the Android system.
-
-## GitHub Pages
-
-Upload/replace all four project files together:
-
-- `index.html`
-- `style.css`
-- `script.js`
-- `README.md`
-
-Do not upload the ZIP as a replacement for the four files.
+## Important
+This is a browser application, not an Android Linux userspace. A GitHub Pages site cannot install native Android/Linux binaries or give arbitrary `/system` access. The package manager here manages NEXUS's own package state. For genuinely executable Python/GCC/Git and long-running Linux servers, use the separate native Android build.
