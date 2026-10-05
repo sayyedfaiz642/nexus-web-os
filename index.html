@@ -1,108 +1,86 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#050811">
-  <title>NEXUS // Interactive Web System</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#05070d">
+<title>NEXUS OS</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="stars"></canvas>
+<canvas id="stars"></canvas>
+<div id="boot" class="boot"><b>NEXUS<span>OS</span></b><p>INITIALIZING CORE...</p><p>MOUNTING VFS...</p><p>LOADING PYTHON WASM...</p><div><i id="bar"></i></div></div>
 
-  <header class="topbar">
-    <div class="brand"><span class="dot"></span>NEXUS <i>// SYSTEM</i></div>
-    <div class="top-actions">
-      <span class="status"><span></span>ONLINE</span>
-      <button class="mini-btn" id="themeBtn">◐</button>
-      <button class="mini-btn" data-open="terminal">›_</button>
-    </div>
-  </header>
+<div id="app" class="hidden">
+<header>
+  <div class="brand"><strong>N</strong><span>NEXUS<span>OS</span><small>WEB OPERATING SYSTEM</small></span></div>
+  <div class="status"><i></i><span id="pyStatus">PYTHON: LOADING</span><em id="clock"></em><button id="theme">☼</button></div>
+</header>
 
-  <main class="hero">
-    <div class="eyebrow">WELCOME, EXPLORER</div>
-    <h1>A website that<br>behaves <span>like a<br>system.</span></h1>
-    <p>Open apps, run commands, change the environment and discover hidden interfaces built entirely for the browser.</p>
-    <div class="hero-actions">
-      <button class="primary" data-open="game">PLAY NEXUS ARENA</button>
-      <button class="secondary" data-open="terminal">OPEN TERMINAL</button>
-    </div>
-  </main>
+<main>
+<section class="hero glass">
+  <div><small class="eyebrow">NEXUS CORE / ONLINE</small>
+  <h1>BUILD.<br><span>EXECUTE.</span><br>EXPLORE.</h1>
+  <p>Browser-native cyberpunk workstation with persistent virtual files, real Python WebAssembly and interactive modules.</p>
+  <button class="primary" data-open="terminal">OPEN TERMINAL</button>
+  <button class="secondary" data-open="about">SYSTEM INFO</button></div>
+  <div class="core"><i></i><i></i><i></i><b>N</b></div>
+</section>
 
-  <section class="app-grid">
-    <button class="app-card" data-open="about"><b>◈</b><strong>SYSTEM</strong><small>About NEXUS</small></button>
-    <button class="app-card" data-open="terminal"><b>›_</b><strong>TERMINAL</strong><small>Unix-style console</small></button>
-    <button class="app-card" data-open="lab"><b>∿</b><strong>SIGNAL LAB</strong><small>Control the core</small></button>
-    <button class="app-card featured" data-open="game"><b>⚡</b><strong>ARENA</strong><small>Real playable game</small></button>
-  </section>
+<section class="stats">
+<div class="glass"><small>VFS</small><b id="vfs">MOUNTED</b></div>
+<div class="glass"><small>PYTHON</small><b id="pyStat">LOADING</b></div>
+<div class="glass"><small>FILES</small><b id="files">0</b></div>
+<div class="glass"><small>SESSION</small><b>LOCAL</b></div>
+</section>
 
-  <section class="core-section">
-    <div class="core">
-      <div class="ring one"></div><div class="ring two"></div><div class="ring three"></div>
-      <div class="core-letter">N</div>
-    </div>
-    <div class="core-caption">NEXUS CORE <span>●</span></div>
-  </section>
+<section class="apps">
+<button class="glass app" data-open="terminal"><b>&gt;_</b><strong>Terminal</strong><small>Linux-style NEXUS shell</small></button>
+<button class="glass app" data-open="nano"><b>N</b><strong>Nano Editor</strong><small>Edit VFS files</small></button>
+<button class="glass app" data-open="signal"><b>⌁</b><strong>Signal Lab</strong><small>Live waveform</small></button>
+<button class="glass app" data-open="arena"><b>✦</b><strong>NEXUS Arena</strong><small>Canvas shooter</small></button>
+</section>
 
-  <footer>© 2026 NEXUS // Built for the web. <span>Press T to open terminal.</span></footer>
+<section class="glass workspace"><div><small class="eyebrow">WORKSPACE</small><h2>Live Console</h2></div>
+<div class="preview"><span>● ● ●</span><pre>NEXUS OS / Browser Runtime
+VFS: LocalStorage persistent
+Python: Pyodide WebAssembly
+Kernel: NEXUS Virtual Kernel</pre></div></section>
+</main>
+<footer>NEXUS OS · LOCAL-FIRST WEB WORKSTATION · <span id="foot">PYTHON WASM INITIALIZING</span></footer>
+</div>
 
-  <div class="window hidden" id="aboutWindow">
-    <div class="window-head"><span>NEXUS // SYSTEM</span><button data-close="aboutWindow">×</button></div>
-    <div class="window-body">
-      <h2>Interactive Web System</h2>
-      <p class="muted">NEXUS is a browser-only environment: apps, terminal tools, experiments and a playable game live inside the same interface.</p>
-      <div class="stat-grid">
-        <div><strong>4</strong><small>Core files</small></div>
-        <div><strong>0</strong><small>Server APIs</small></div>
-        <div><strong>∞</strong><small>Ideas</small></div>
-      </div>
-      <p class="hint">Everything is designed to run on GitHub Pages.</p>
-    </div>
-  </div>
+<div id="terminal" class="window terminal hidden">
+<div class="head">● ● ● <b>NEXUS TERMINAL</b><button data-close="terminal">×</button></div>
+<div id="out" class="out"></div>
+<div class="input"><span id="prompt">nexus@os:~$</span><input id="cmd" autocomplete="off" spellcheck="false"></div>
+</div>
 
-  <div class="window terminal-window hidden" id="terminalWindow">
-    <div class="window-head"><span>NEXUS // CONSOLE</span><button data-close="terminalWindow">×</button></div>
-    <div class="terminal" id="terminalOutput"></div>
-    <div class="terminal-input"><span>guest@nexus:<em id="termPath">~</em> $</span><input id="terminalInput" autocomplete="off" spellcheck="false"></div>
-  </div>
+<div id="nano" class="window editor hidden">
+<div class="head"><b>NANO EDITOR</b><button data-close="nano">×</button></div>
+<div class="toolbar"><input id="filename" placeholder="filename.txt"><button id="save" class="primary">SAVE</button></div>
+<textarea id="editor" spellcheck="false"></textarea>
+<div class="editstatus" id="editstatus">READY</div>
+</div>
 
-  <div class="window hidden" id="labWindow">
-    <div class="window-head"><span>NEXUS // SIGNAL LAB</span><button data-close="labWindow">×</button></div>
-    <div class="window-body">
-      <p class="muted">Tune the virtual core and watch the interface react.</p>
-      <label>Signal intensity <output id="signalValue">55%</output></label>
-      <input id="signalSlider" type="range" min="0" max="100" value="55">
-      <label>Orbit speed <output id="speedValue">35%</output></label>
-      <input id="speedSlider" type="range" min="0" max="100" value="35">
-      <div class="readout">SIGNAL <span id="signalText">55%</span> <i>//</i> SPEED <span id="speedText">35%</span></div>
-      <button class="primary full" id="randomSignal">GENERATE RANDOM SIGNAL</button>
-    </div>
-  </div>
+<div id="about" class="window info hidden">
+<div class="head"><b>NEXUS SYSTEM</b><button data-close="about">×</button></div>
+<div class="infoin"><b>N</b><h2>NEXUS OS</h2><p>Original browser-native cyberpunk workstation for GitHub Pages.</p><div><span>Runtime<br><b>Browser</b></span><span>Python<br><b>Pyodide WASM</b></span><span>Storage<br><b>LocalStorage</b></span></div></div>
+</div>
 
-  <div class="window game-window hidden" id="gameWindow">
-    <div class="window-head"><span>NEXUS // ARENA</span><button data-close="gameWindow">×</button></div>
-    <div class="game-wrap">
-      <div class="game-hud">
-        <span>SCORE <b id="gameScore">0</b></span>
-        <span>WAVE <b id="gameWave">1</b></span>
-        <span>HP <b id="gameHp">100</b></span>
-        <span>BEST <b id="gameBest">0</b></span>
-      </div>
-      <canvas id="gameCanvas" width="720" height="460"></canvas>
-      <div class="game-overlay" id="gameMenu">
-        <div class="game-logo">NEXUS<br><span>ARENA</span></div>
-        <p>Survive the waves. Move, aim and fire. Collect energy cores.</p>
-        <button class="primary" id="gamePlay">START GAME</button>
-        <small>Keyboard: WASD + mouse • Mobile: drag + FIRE</small>
-      </div>
-      <div class="touch-controls">
-        <div id="joy" class="joystick"><span></span></div>
-        <button id="fireBtn" class="fire">FIRE</button>
-      </div>
-    </div>
-  </div>
+<div id="signal" class="window signal hidden">
+<div class="head"><b>SIGNAL LAB</b><button data-close="signal">×</button></div>
+<canvas id="sigcanvas"></canvas>
+<label>Intensity <input id="intensity" type="range" min="1" max="100" value="55"></label>
+<label>Speed <input id="speed" type="range" min="1" max="100" value="35"></label>
+</div>
 
-  <div id="toast"></div>
-  <script src="script.js"></script>
+<div id="arena" class="window arena hidden">
+<div class="head"><b>NEXUS ARENA <span id="score">SCORE: 0</span></b><button data-close="arena">×</button></div>
+<div class="game"><canvas id="gamecanvas"></canvas><div id="gameover"><h2>NEXUS ARENA</h2><p>WASD / arrows to move · mouse to aim/fire</p><button id="start" class="primary">START GAME</button></div><div class="mobile"><div id="joy">●</div><button id="fire">FIRE</button></div></div>
+</div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
